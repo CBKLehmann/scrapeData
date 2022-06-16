@@ -3,28 +3,23 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
 from datetime import datetime
+import json
 
 
 if __name__ == '__main__':
 
     print(datetime.now())
 
-    datas = []
+    datas = {}
     loop = True
-    counter = 0
+    counter = 1
 
     browser = webdriver.Chrome()
     new_browser = webdriver.Chrome()
     browser.get('https://www.pflegeausbildung.net/no_cache/alles-zur-ausbildung/uebersicht-pflegeschulen.html')
 
-    display_amount = browser.find_element(By.NAME, 'tx_bafzaaltenpflegeschulen_demap[itemsPerPage]')
-    display_amount.send_keys(100)
-    display_amount.send_keys(Keys.RETURN)
-    display_amount.click()
-    submit = browser.find_elements(By.CLASS_NAME, 'form-control')
-    submit[0].click()
-    time.sleep(1)
     while loop:
+        print(len(datas))
         list_schools = browser.find_element(By.CLASS_NAME, 'altenpflegeschulen')
         singleItems = list_schools.find_elements(By.CLASS_NAME, 'showSingleItem')
         links = [item.get_attribute('href') for item in singleItems]
@@ -78,19 +73,18 @@ if __name__ == '__main__':
                 'Teilzeitausbildung': teilzeit,
                 'Zertifiziert': zertifiziert
             }
-            datas.append(data)
-
+            datas[f'{counter}'] = data
+            counter += 1
         try:
             browser.find_element(By.CLASS_NAME, 'next').click()
-        except:
+        except Exception:
+            print(Exception)
             loop = False
-        finally:
-            counter += 1
 
     print('##########################################')
     print(len(datas))
-    for entry in datas:
-        print(entry)
+    with open('data.json', 'w', encoding='utf-8') as f:
+        json.dump(datas, f, ensure_ascii=False, indent=4)
     print('##########################################')
     print(datetime.now())
 
