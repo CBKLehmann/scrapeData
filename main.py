@@ -3,6 +3,28 @@ from selenium.webdriver.common.by import By
 from datetime import datetime
 import json
 from os.path import exists
+import psycopg2
+import os
+import sys
+
+
+# This Function is called to connect or disconnect to the database
+def db_connect(string, values):
+    try:
+        connection = psycopg2.connect(user='admin',
+                                      password='admin',
+                                      host=os.environ.get('DB_HOST'),
+                                      port='5432',
+                                      database='pflege_ausbildung')
+        cursor = connection.cursor()
+        cursor.execute(string, values)
+        cursor.fetchall()
+        cursor.close()
+    except Exception as err:
+        print('Something happened in db_connect')
+        print(sys.exc_info())
+        print(err)
+
 
 if __name__ == '__main__':
 
@@ -10,6 +32,7 @@ if __name__ == '__main__':
     print(datetime.now())
 
     datas = {}
+    datas_arr = []
     loop = True
     counter = 1
     count = 0
@@ -65,6 +88,11 @@ if __name__ == '__main__':
             else:
                 zertifiziert = 'N/A'
 
+            with open('georef-germany-postleitzahl.json', 'r', encoding='utf-8') as f:
+                for entry in json.loads(f.read()):
+                    if entry['fields']['plz_code'] == plz:
+                        krs_code = entry['fields']['krs_code']
+
             data = {
                 'Name': details.find_element(By.TAG_NAME, 'h2').text,
                 'Straße': street,
@@ -75,18 +103,22 @@ if __name__ == '__main__':
                 'Web': web,
                 'Abschlüsse': ausbildungDetails[0].text.split('\n'),
                 'Teilzeitausbildung': teilzeit,
-                'Zertifiziert': zertifiziert
+                'Zertifiziert': zertifiziert,
+                'Kreiscode': krs_code
             }
-            datas[f'{counter}'] = data
+
+            values = (details.find_element(By.TAG_NAME, 'h2').text, street, plz, city, telefon, email, web, ausbildungDetails[0].text.split('\n'), teilzeit, zertifiziert, krs_code, today, today, details.find_element(By.TAG_NAME, 'h2').text, street, plz, city, telefon, email, web, ausbildungDetails[0].text.split('\n'), teilzeit, zertifiziert, krs_code, today, today)
+
+            db_connect(f"""INSERT INTO "Einrichtungen" (name, street, postcode, city, telefon, email, web, degree, parttime_education, certificate, district_code, inserts, updated) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (name) DO UPDATE SET (street, postcode, city, telefon, email, web, degree, parttime_education, certificate, district_code, inserts, updated) = (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", values)
+
             counter += 1
+
         try:
             browser.find_element(By.CLASS_NAME, 'next').click()
         except Exception:
             print(Exception)
             loop = False
 
-    print('##########################################')
-    print(len(datas))
     if exists('data.json'):
         with open('data.json', 'r', encoding='utf-8') as f:
             content = json.load(f)
@@ -104,7 +136,6 @@ if __name__ == '__main__':
             datas[data]['Überprüft'] = today
         with open('data.json', 'w', encoding='utf-8') as f:
             json.dump(datas, f, ensure_ascii=False, indent=4)
-    print('##########################################')
     print(datetime.now())
 
     new_browser.quit()
