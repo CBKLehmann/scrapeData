@@ -66,13 +66,13 @@ def db_connect(db):
 
 def write_db(inserts, db):
 
-    einrichtungen_to_insert = []
     try:
         response = db_connect(db)
         engine = response['engine']
         session = response['session']
         insp = inspect(engine)
         pk_constraint_name = insp.get_pk_constraint(Einrichtung.__tablename__)['name']
+        print(pk_constraint_name)
         to_insert = insert(Einrichtung.__table__).values(inserts)
         to_insert = to_insert.on_conflict_do_update(
             constraint=pk_constraint_name,
@@ -93,7 +93,7 @@ def write_db(inserts, db):
         session.execute(to_insert)
         return session
     except Exception as write_db_err:
-        print('Something happened in db_connect')
+        print('Something happened in write_db')
         print(sys.exc_info())
         print(write_db_err)
 
