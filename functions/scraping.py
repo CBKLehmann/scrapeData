@@ -1,11 +1,12 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from functions.database import write_db
+from functions.json_func import edit_data_json
 import sys
 import json
 
 
-def collect_data(contact, details, today):
+def collect_data(contact, details, today, data_arr):
     telefon = 'N/A'
     web = 'N/A'
     email = 'N/A'
@@ -71,34 +72,46 @@ def collect_data(contact, details, today):
         'updated': today
     }
 
-    return data
+    for entry in data_arr:
+        if entry['name'] == data['name']:
+            index_arr = data_arr.index(entry)
+            for key in data:
+                entry[key] = data[key]
+            data_arr[index_arr] = entry
+            break
+        else:
+            data['id'] = len(data_arr) + 1
+            data_arr.append(data)
+
+    return data_arr
 
 
 def scrape_page_care_dev(today):
     counter = 1
     count = 0
+    data_arr = []
 
     browser = webdriver.Chrome()
     new_browser = webdriver.Chrome()
     browser.get('https://www.pflegeausbildung.net/no_cache/alles-zur-ausbildung/uebersicht-pflegeschulen.html')
 
-    while count <= 3:
+    while count <= 0:
         count += 1
-        data_arr = []
         list_schools = browser.find_element(By.CLASS_NAME, 'altenpflegeschulen')
         single_items = list_schools.find_elements(By.CLASS_NAME, 'showSingleItem')
         links = [item.get_attribute('href') for item in single_items]
         for item in links:
             if counter <= 500:
                 new_browser.get(item)
-                data_arr.append(collect_data(
+                data_arr = collect_data(
                     contact=new_browser.find_elements(By.CLASS_NAME, 'col-sm-6'),
                     details=new_browser.find_element(By.CLASS_NAME, 'detailView'),
-                    today=today))
+                    today=today,
+                    data_arr=data_arr
+                )
                 counter += 1
 
         try:
-            session = write_db(data_arr, 'pflege_ausbildung')
             browser.find_element(By.CLASS_NAME, 'next').click()
         except Exception as main_err:
             print('Something happened while changing the page')
@@ -106,10 +119,14 @@ def scrape_page_care_dev(today):
             print(main_err)
             loop = False
 
+    new_entries = edit_data_json(data_arr=data_arr, today=today)
+    for entry in new_entries:
+        print(entry)
+    session = write_db(inserts=new_entries, db='pflege_ausbildung')
     new_browser.quit()
     browser.quit()
 
-    return session, data_arr
+    return session
 
 
 def scrape_page_care(today):
@@ -139,7 +156,8 @@ def scrape_page_care(today):
             print(main_err)
             loop = False
 
-    session = write_db(data_arr, 'pflege_ausbildung')
+    new_entries = edit_data_json(data_arr=data_arr, today=today)
+    session = write_db(inserts=new_entries, db='pflege_ausbildung')
     new_browser.quit()
     browser.quit()
 

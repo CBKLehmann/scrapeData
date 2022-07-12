@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, MetaData, inspect
+from sqlalchemy import create_engine, Column, MetaData, inspect, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -67,35 +67,19 @@ def db_connect(db):
 def write_db(inserts, db):
 
     try:
+        to_delete = delete(Einrichtung.__table__)
         response = db_connect(db)
-        engine = response['engine']
         session = response['session']
-        insp = inspect(engine)
-        pk_constraint_name = insp.get_pk_constraint(Einrichtung.__tablename__)['name']
-        print(pk_constraint_name)
         to_insert = insert(Einrichtung.__table__).values(inserts)
-        to_insert = to_insert.on_conflict_do_update(
-            constraint=pk_constraint_name,
-            set_={
-                "street": to_insert.excluded.street,
-                "postcode": to_insert.excluded.postcode,
-                "city": to_insert.excluded.city,
-                "telefon": to_insert.excluded.telefon,
-                "email": to_insert.excluded.email,
-                "web": to_insert.excluded.web,
-                "parttime_education": to_insert.excluded.parttime_education,
-                "certificate": to_insert.excluded.certificate,
-                "district_code": to_insert.excluded.district_code,
-                "updated": to_insert.excluded.updated
-            }
-        )
-
+        session.execute(to_delete)
         session.execute(to_insert)
         return session
     except Exception as write_db_err:
         print('Something happened in write_db')
-        print(sys.exc_info())
-        print(write_db_err)
+        # print(sys.exc_info())
+        # print(write_db_err)
+    finally:
+        session.close()
 
 
 def read_db(session):

@@ -18,9 +18,13 @@ def edit_data_json(data_arr, today):
                         content[content.index(raw_content[content_index])]['updated'] = today
                     data_index += 1
                 content_index += 1
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(content, f, ensure_ascii=False, indent=4)
+        return content
     else:
         for data in data_arr:
             data['inserted'] = today
             data['updated'] = today
         with open('data.json', 'w', encoding='utf-8') as f:
             json.dump(data_arr, f, ensure_ascii=False, indent=4)
+        return data_arr
