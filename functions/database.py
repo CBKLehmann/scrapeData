@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.types import Text, Date
+from sqlalchemy.types import Text, Date, Integer
 import sys
 
 base = declarative_base()
@@ -12,7 +12,8 @@ base = declarative_base()
 class Einrichtung(base):
     __tablename__ = 'Einrichtungen'
 
-    name = Column(Text, primary_key=True)
+    id = Column(Integer, primary_key=True)
+    name = Column(Text)
     street = Column(Text)
     postcode = Column(Text)
     city = Column(Text)
@@ -76,8 +77,8 @@ def write_db(inserts, db):
         return session
     except Exception as write_db_err:
         print('Something happened in write_db')
-        # print(sys.exc_info())
-        # print(write_db_err)
+        print(sys.exc_info())
+        print(write_db_err)
     finally:
         session.close()
 
@@ -91,7 +92,8 @@ def create_table():
     if not inspect(engine).has_table('Einrichtungen'):
         metadata = MetaData(engine)
         Table('Einrichtungen', metadata,
-              Column('name', Text, primary_key=True, unique=True),
+              Column('id', Integer),
+              Column('name', Text),
               Column('street', Text),
               Column('postcode', Text),
               Column('city', Text),
