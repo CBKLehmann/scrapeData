@@ -1,3 +1,4 @@
+import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from functions.database import write_db
@@ -82,52 +83,75 @@ def scrape_page_care_dev(today):
     counter = 1
     count = 0
     data_arr = []
+    loop = True
 
     browser = webdriver.Chrome()
-    new_browser = webdriver.Chrome()
+    # new_browser = webdriver.Chrome()
     browser.get('https://www.pflegeausbildung.net/no_cache/alles-zur-ausbildung/uebersicht-pflegeschulen.html')
 
-    while count <= 3:
-        count += 1
-        list_schools = browser.find_element(By.CLASS_NAME, 'altenpflegeschulen')
-        single_items = list_schools.find_elements(By.CLASS_NAME, 'showSingleItem')
-        links = [item.get_attribute('href') for item in single_items]
-        for item in links:
-            if counter <= 500:
-                new_browser.get(item)
-                data_arr = collect_data(
-                    contact=new_browser.find_elements(By.CLASS_NAME, 'col-sm-6'),
-                    details=new_browser.find_element(By.CLASS_NAME, 'detailView'),
-                    today=today,
-                    data_arr=data_arr
-                )
-                counter += 1
-
-        try:
-            browser.find_element(By.CLASS_NAME, 'next').click()
-        except Exception as main_err:
-            print('Something happened while changing the page')
-            print(sys.exc_info())
-            print(main_err)
+    while loop:
+        pagination = browser.find_element(By.CLASS_NAME, 'pagination')
+        pagination_childs = pagination.find_elements_by_css_selector("*")
+        childs_amount = len(pagination_childs)
+        if pagination_childs[childs_amount - 2].get_attribute('class') == "next":
+            pagination_childs[childs_amount - 2].click()
+        else:
             loop = False
 
-    new_entries = edit_data_json(data_arr=data_arr, today=today)
-    session = write_db(inserts=new_entries, db='pflege_ausbildung')
-    new_browser.quit()
-    browser.quit()
+    # browser.quit()
 
-    return session
+    # while loop:
+    #     count += 1
+    #     print(count)
+    #     if count == 48:
+    #         btn = browser.find_element(By.CLASS_NAME, 'next')
+    #         print(btn)
+    #         loop = False
+    #     else:
+    #         browser.find_element(By.CLASS_NAME, 'next').click()
+
+    #     list_schools = browser.find_element(By.CLASS_NAME, 'altenpflegeschulen')
+    #     single_items = list_schools.find_elements(By.CLASS_NAME, 'showSingleItem')
+    #     links = [item.get_attribute('href') for item in single_items]
+    #     for item in links:
+    #         if counter <= 500:
+    #             new_browser.get(item)
+    #             data_arr = collect_data(
+    #                 contact=new_browser.find_elements(By.CLASS_NAME, 'col-sm-6'),
+    #                 details=new_browser.find_element(By.CLASS_NAME, 'detailView'),
+    #                 today=today,
+    #                 data_arr=data_arr
+    #             )
+    #             counter += 1
+    #
+    #     try:
+    #         browser.find_element(By.CLASS_NAME, 'next').click()
+    #     except Exception as main_err:
+    #         print('Something happened while changing the page')
+    #         print(sys.exc_info())
+    #         print(main_err)
+    #         loop = False
+    #
+    # new_entries = edit_data_json(data_arr=data_arr, today=today)
+    # session = write_db(inserts=new_entries, db='pflege_ausbildung')
+    # new_browser.quit()
+    # browser.quit()
+    #
+    # return session
 
 
 def scrape_page_care(today):
     data_arr = []
     loop = True
+    exist_err = False
 
-    browser = webdriver.Chrome()
+    browser = webdriver.Firefox()
+    # browser = webdriver.Chrome()
     browser.get('https://www.pflegeausbildung.net/no_cache/alles-zur-ausbildung/uebersicht-pflegeschulen.html')
 
     while loop:
-        new_browser = webdriver.Chrome()
+        # new_browser = webdriver.Chrome()
+        new_browser = webdriver.Firefox()
         list_schools = browser.find_element(By.CLASS_NAME, 'altenpflegeschulen')
         single_items = list_schools.find_elements(By.CLASS_NAME, 'showSingleItem')
         links = [item.get_attribute('href') for item in single_items]
@@ -140,14 +164,13 @@ def scrape_page_care(today):
                 data_arr=data_arr
             )
 
-        try:
-            new_browser.quit()
-            print(browser.find_element(By.CLASS_NAME, 'next'))
-            browser.find_element(By.CLASS_NAME, 'next').click()
-        except Exception as main_err:
-            print('Something happened while changing the page')
-            print(sys.exc_info())
-            print(main_err)
+        new_browser.quit()
+        pagination = browser.find_element(By.CLASS_NAME, 'pagination')
+        pagination_childs = pagination.find_elements_by_css_selector("*")
+        childs_amount = len(pagination_childs)
+        if pagination_childs[childs_amount - 2].get_attribute('class') == "next":
+            pagination_childs[childs_amount - 2].click()
+        else:
             loop = False
 
     new_entries = edit_data_json(data_arr=data_arr, today=today)
