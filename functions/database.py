@@ -106,7 +106,6 @@ def get_coords_for_db():
                 access_token="pk.eyJ1Ijoic2hpbnlrYW1wZmtldWxlIiwiYSI6ImNreWluYm5jMTBrYXcydnFvbmt3a3RiMG8ifQ.UEt90g8gVzPhsJof0znguA"
             )
         coord_response = geocoder.forward(f"{entry.street} {entry.postcode} {entry.city}")
-        print(counter)
         lat = coord_response.geojson()['features'][0]['center'][1]
         lon = coord_response.geojson()['features'][0]['center'][0]
         entry.coord_lat = lat
