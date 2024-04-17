@@ -1,12 +1,16 @@
-from sqlalchemy import create_engine, Column, MetaData, inspect, delete
+from sqlalchemy import create_engine, Column, MetaData, inspect, delete, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import Text, Date, Integer
+from mapbox import Geocoder
 import sys
 
 base = declarative_base()
+# geocoder = Geocoder(
+#     access_token="pk.eyJ1IjoiYnJvb2tlbXllcnMiLCJhIjoiY2tsamtiZ3l0MW55YjJvb2lsbmNxaWo0dCJ9.9iOO0aFkAy0TAP_qjtSE-A"
+# )
 
 
 class Einrichtung(base):
@@ -26,6 +30,8 @@ class Einrichtung(base):
     district_code = Column(Text)
     inserted = Column(Date)
     updated = Column(Date)
+    coord_lat = Column(Text)
+    coord_lon = Column(Text)
 
 
 def get_engine(db):
@@ -83,8 +89,34 @@ def write_db(inserts, db):
         session.close()
 
 
+def get_coords_for_db():
+    counter = 0
+    response = db_connect('pflege_ausbildung')
+    session = response['session']
+    engine = response['engine']
+    entries = read_db(session=session)
+    for entry in entries:
+        counter += 1
+        if counter <= 200:
+            geocoder = Geocoder(
+                access_token="pk.eyJ1IjoiYnJvb2tlbXllcnMiLCJhIjoiY2tsamtiZ3l0MW55YjJvb2lsbmNxaWo0dCJ9.9iOO0aFkAy0TAP_qjtSE-A"
+            )
+        else:
+            geocoder = Geocoder(
+                access_token="pk.eyJ1Ijoic2hpbnlrYW1wZmtldWxlIiwiYSI6ImNreWluYm5jMTBrYXcydnFvbmt3a3RiMG8ifQ.UEt90g8gVzPhsJof0znguA"
+            )
+        coord_response = geocoder.forward(f"{entry.street} {entry.postcode} {entry.city}")
+        lat = coord_response.geojson()['features'][0]['center'][1]
+        lon = coord_response.geojson()['features'][0]['center'][0]
+        entry.coord_lat = lat
+        entry.coord_lon = lon
+        new_update = update(Einrichtung).where(Einrichtung.id == entry.id).values(coord_lat=lat, coord_lon=lon)
+        session.execute(new_update)
+
+
 def read_db(session):
-    print('Hello')
+    entries = session.query(Einrichtung)
+    return entries
 
 
 def create_table():
@@ -105,5 +137,7 @@ def create_table():
               Column('certificate', Text),
               Column('district_code', Text),
               Column('inserted', Date),
-              Column('updated', Date))
+              Column('updated', Date),
+              Column('coord_lat', Text),
+              Column('coord_lon', Text))
         base.metadata.create_all(engine)
